@@ -73,19 +73,19 @@ class ParseEventFn(beam.DoFn):
 
   Each event line has the following format:
 
-    person: <id starting with 'p'>,name,email,credit_card,city, \
+    person: 'p',id',name,email,credit_card,city, \
                           state,timestamp,extra
-    auction: <id starting with 'a'>,item_name, description,initial_bid, \
+    auction: 'a',id,item_name,description,initial_bid, \
                           reserve_price,timestamp,expires,seller,category,extra
-    bid: <auction starting with 'b'>,bidder,price,timestamp,extra
+    bid: 'b',id,bidder,price,timestamp,extra
 
   For example:
 
-    'p12345,maria,maria@maria.com,1234-5678-9012-3456, \
+    'p,12345,maria,maria@maria.com,1234-5678-9012-3456, \
                                         sunnyvale,CA,1528098831536'
-    'a12345,car67,2012 hyundai elantra,15000,20000, \
+    'a,12345,car67,2012 hyundai elantra,15000,20000, \
                                         1528098831536,20180630,maria,vehicle'
-    'b12345,maria,20000,1528098831536'
+    'b,12345,maria,20000,1528098831536'
   """
   def process(self, elem):
     model_dict = {
@@ -93,8 +93,11 @@ class ParseEventFn(beam.DoFn):
         'a': nexmark_model.Auction,
         'b': nexmark_model.Bid,
     }
+
+    if isinstance(elem, bytes):
+      elem = elem.decode()
     row = elem.split(',')
-    model = model_dict.get(elem[0])
+    model = model_dict.get(row.pop(0))
     if not model:
       raise ValueError('Invalid event: %s.' % row)
 
