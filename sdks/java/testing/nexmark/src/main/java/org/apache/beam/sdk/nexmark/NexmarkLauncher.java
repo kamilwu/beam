@@ -87,6 +87,7 @@ import org.apache.beam.sdk.nexmark.queries.sql.SqlQuery7;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testutils.metrics.MetricsReader;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
@@ -95,6 +96,9 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Charsets;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
@@ -703,7 +707,8 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
       new DoFn<Event, byte[]>() {
         @ProcessElement
         public void processElement(ProcessContext c) throws IOException {
-          byte[] encodedCSVRow = CoderUtils.encodeToByteArray(StringUtf8Coder.of(), c.element().toCSVRow());
+          byte[] encodedCSVRow =
+              CoderUtils.encodeToByteArray(StringUtf8Coder.of(), c.element().toCSVRow());
           c.output(encodedCSVRow);
         }
       };
@@ -713,12 +718,20 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
     checkArgument((options.getBootstrapServers() != null), "Missing --bootstrapServers");
     NexmarkUtils.console("Writing events to Kafka Topic %s", options.getKafkaTopic());
 
-    events.apply(
-        KafkaIO.<Void, byte[]>write()
-            .withBootstrapServers(options.getBootstrapServers())
-            .withTopic(options.getKafkaTopic())
-            .withValueSerializer(ByteArraySerializer.class)
-            .values());
+    // Cross-language KafkaIO fails for empty key, see BEAM-10529. A non-empty key must be used
+    // instead.
+    events
+        .apply(
+            MapElements.into(
+                    TypeDescriptors.kvs(
+                        TypeDescriptor.of(byte[].class), TypeDescriptor.of(byte[].class)))
+                .via(event -> KV.of("x".getBytes(Charsets.UTF_8), event)))
+        .apply(
+            KafkaIO.<byte[], byte[]>write()
+                .withBootstrapServers(options.getBootstrapServers())
+                .withTopic(options.getKafkaTopic())
+                .withKeySerializer(ByteArraySerializer.class)
+                .withValueSerializer(ByteArraySerializer.class));
   }
 
   static final DoFn<KV<Long, byte[]>, Event> BYTEARRAY_TO_EVENT =
