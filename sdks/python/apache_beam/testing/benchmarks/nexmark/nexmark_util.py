@@ -41,9 +41,21 @@ import logging
 import threading
 
 import apache_beam as beam
+from apache_beam.metrics import Metrics
 from apache_beam.testing.benchmarks.nexmark.models import nexmark_model
 
 _LOGGER = logging.getLogger(__name__)
+
+METRICS_NAMESPACE = 'nexmark'
+
+
+class SourceType(object):
+  """Enum-like object represating possible sources for events.
+
+  TODO(BEAM-7372): Convert this into enum once we stop supporting Python 2.7
+  """
+  PUBSUB = 'PUBSUB'
+  KAFKA = 'KAFKA'
 
 
 class Command(object):
@@ -87,17 +99,22 @@ class ParseEventFn(beam.DoFn):
                                         1528098831536,20180630,maria,vehicle'
     'b,12345,maria,20000,1528098831536'
   """
-  def process(self, elem):
-    model_dict = {
+  def __init__(self):
+    self.messages_counter = Metrics.counter(METRICS_NAMESPACE, 'events')
+    self.model_dict = {
         'p': nexmark_model.Person,
         'a': nexmark_model.Auction,
         'b': nexmark_model.Bid,
     }
 
+  def process(self, elem):
+    self.messages_counter.inc()
+
     if isinstance(elem, bytes):
       elem = elem.decode()
+
     row = elem.split(',')
-    model = model_dict.get(row.pop(0))
+    model = self.model_dict.get(row.pop(0))
     if not model:
       raise ValueError('Invalid event: %s.' % row)
 
