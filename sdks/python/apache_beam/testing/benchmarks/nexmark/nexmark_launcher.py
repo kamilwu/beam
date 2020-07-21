@@ -201,6 +201,10 @@ class NexmarkLauncher(object):
             topic=topic_path)
     elif self.source_type == SourceType.KAFKA:
       logging.debug('Using Kafka topic %s' % self.topic_name)
+      # Setting max_num_records while using Dataflow triggers an exception:
+      # KeyError: 'beam:window_fn:serialized_java:v1'
+      max_num_records = None if self.runner == 'DataflowRunner' else \
+          self.number_of_events
       raw_events = (
           pipeline
           | 'ReadFromKafka' >> ReadFromKafka(
@@ -209,7 +213,8 @@ class NexmarkLauncher(object):
                   'auto.offset.reset': 'earliest',
                   'group.id': uuid.uuid4().hex,
               },
-              topics=[self.topic_name])
+              topics=[self.topic_name],
+              max_num_records=max_num_records)
           | 'Extract values' >> beam.Values())
     else:
       raise RuntimeError('Unsupported source type')
