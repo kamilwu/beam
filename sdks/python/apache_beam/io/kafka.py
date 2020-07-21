@@ -97,6 +97,8 @@ ReadFromKafkaSchema = typing.NamedTuple(
         ('topics', typing.List[unicode]),
         ('key_deserializer', unicode),
         ('value_deserializer', unicode),
+        ('max_num_records', typing.Optional[int]),
+        ('max_read_time', typing.Optional[int]),
     ])
 
 
@@ -125,6 +127,8 @@ class ReadFromKafka(ExternalTransform):
       topics,
       key_deserializer=byte_array_deserializer,
       value_deserializer=byte_array_deserializer,
+      max_num_records=None,
+      max_read_time=None,
       expansion_service=None):
     """
     Initializes a read operation from Kafka.
@@ -153,6 +157,8 @@ class ReadFromKafka(ExternalTransform):
                 topics=topics,
                 key_deserializer=key_deserializer,
                 value_deserializer=value_deserializer,
+                max_num_records=max_num_records,
+                max_read_time=max_read_time,
             )),
         expansion_service or default_io_expansion_service())
 
