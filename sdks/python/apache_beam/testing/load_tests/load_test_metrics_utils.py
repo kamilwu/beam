@@ -175,8 +175,6 @@ class MetricsReader(object):
   A :class:`MetricsReader` retrieves metrics from pipeline result,
   prepares it for publishers and setup publishers.
   """
-  publishers = []  # type: List[Any]
-
   def __init__(
       self,
       project_name=None,
@@ -196,6 +194,7 @@ class MetricsReader(object):
       filters: MetricFilter to query only filtered metrics
     """
     self._namespace = namespace
+    self.publishers = []  # type: List[Any]
     self.publishers.append(ConsoleMetricsPublisher())
 
     check = project_name and bq_table and bq_dataset and publish_to_bq
@@ -356,7 +355,7 @@ class RuntimeMetric(Metric):
     # finding real end
     max_value = max(max_values)
 
-    runtime_in_s = float(max_value - min_value)
+    runtime_in_s = float(max_value - min_value) / 1000
     return runtime_in_s
 
 
@@ -369,7 +368,7 @@ class ConsoleMetricsPublisher(object):
             % (results[0][ID_LABEL], results[0][SUBMIT_TIMESTAMP_LABEL])
       _LOGGER.info(log)
       for result in results:
-        log = "Metric: %s Value: %d" \
+        log = "Metric: %s Value: %f" \
               % (result[METRICS_TYPE_LABEL], result[VALUE_LABEL])
         _LOGGER.info(log)
     else:
@@ -519,10 +518,10 @@ class MeasureTime(beam.DoFn):
     self.runtime = Metrics.distribution(self.namespace, RUNTIME_METRIC)
 
   def start_bundle(self):
-    self.runtime.update(time.time())
+    self.runtime.update(time.time() * 1000)
 
   def finish_bundle(self):
-    self.runtime.update(time.time())
+    self.runtime.update(time.time() * 1000)
 
   def process(self, element):
     yield element
