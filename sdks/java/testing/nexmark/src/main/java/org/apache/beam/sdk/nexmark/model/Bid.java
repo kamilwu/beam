@@ -36,6 +36,7 @@ import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.nexmark.NexmarkUtils;
 import org.apache.beam.sdk.schemas.JavaFieldSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Instant;
 
@@ -154,6 +155,27 @@ public class Bid implements KnownSize, Serializable {
     } else {
       return this;
     }
+  }
+
+  public static Bid fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Bid fromCSVRow(String csvRow, String separator) {
+    List<String> fieldsWithDescriptor = Splitter.on(separator).splitToList(csvRow);
+    List<String> fields = fieldsWithDescriptor.subList(1, fieldsWithDescriptor.size());
+
+    String extra = "";
+    if (fields.size() == 5) {
+      extra = fields.get(4);
+    }
+
+    return new Bid(
+        Long.parseLong(fields.get(0)),
+        Long.parseLong(fields.get(1)),
+        Long.parseLong(fields.get(2)),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(3))),
+        extra);
   }
 
   public String toCSVRow() {

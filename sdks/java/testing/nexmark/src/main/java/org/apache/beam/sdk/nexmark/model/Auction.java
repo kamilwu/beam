@@ -35,6 +35,7 @@ import org.apache.beam.sdk.nexmark.NexmarkUtils;
 import org.apache.beam.sdk.schemas.JavaFieldSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Objects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Instant;
 
@@ -196,6 +197,32 @@ public class Auction implements KnownSize, Serializable {
     } else {
       return this;
     }
+  }
+
+  public static Auction fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Auction fromCSVRow(String csvRow, String separator) {
+    List<String> fieldsWithDescriptor = Splitter.on(separator).splitToList(csvRow);
+    List<String> fields = fieldsWithDescriptor.subList(1, fieldsWithDescriptor.size());
+
+    String extra = "";
+    if (fields.size() == 10) {
+      extra = fields.get(9);
+    }
+
+    return new Auction(
+        Long.parseLong(fields.get(0)),
+        fields.get(1),
+        fields.get(2),
+        Long.parseLong(fields.get(3)),
+        Long.parseLong(fields.get(4)),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(5))),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(6))),
+        Long.parseLong(fields.get(7)),
+        Long.parseLong(fields.get(8)),
+        extra);
   }
 
   public String toCSVRow() {

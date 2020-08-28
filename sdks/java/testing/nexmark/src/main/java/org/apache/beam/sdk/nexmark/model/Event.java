@@ -145,6 +145,23 @@ public class Event implements KnownSize, Serializable {
     this.bid = bid;
   }
 
+  public static Event fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Event fromCSVRow(String csvRow, String separator) {
+    String descriptor = Character.toString(csvRow.charAt(0));
+    if ("p".equals(descriptor)) {
+      return new Event(Person.fromCSVRow(csvRow, separator));
+    } else if ("a".equals(descriptor)) {
+      return new Event(Auction.fromCSVRow(csvRow, separator));
+    } else if ("b".equals(descriptor)) {
+      return new Event(Bid.fromCSVRow(csvRow, separator));
+    } else {
+      throw new RuntimeException("Invalid event: " + csvRow);
+    }
+  }
+
   /** Return a copy of event which captures {@code annotation}. (Used for debugging). */
   public Event withAnnotation(String annotation) {
     if (newPerson != null) {

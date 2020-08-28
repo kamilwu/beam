@@ -35,6 +35,7 @@ import org.apache.beam.sdk.nexmark.NexmarkUtils;
 import org.apache.beam.sdk.schemas.JavaFieldSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Objects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Instant;
 
@@ -158,6 +159,30 @@ public class Person implements KnownSize, Serializable {
     } else {
       return this;
     }
+  }
+
+  public static Person fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Person fromCSVRow(String csvRow, String separator) {
+    List<String> fieldsWithDescriptor = Splitter.on(separator).splitToList(csvRow);
+    List<String> fields = fieldsWithDescriptor.subList(1, fieldsWithDescriptor.size());
+
+    String extra = "";
+    if (fields.size() == 8) {
+      extra = fields.get(7);
+    }
+
+    return new Person(
+        Long.parseLong(fields.get(0)),
+        fields.get(1),
+        fields.get(2),
+        fields.get(3),
+        fields.get(4),
+        fields.get(5),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(6))),
+        extra);
   }
 
   public String toCSVRow() {

@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -107,7 +108,6 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Maps;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
@@ -725,7 +725,7 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
             MapElements.into(
                     TypeDescriptors.kvs(
                         TypeDescriptor.of(byte[].class), TypeDescriptor.of(byte[].class)))
-                .via(event -> KV.of("x".getBytes(Charsets.UTF_8), event)))
+                .via(event -> KV.of(UUID.randomUUID().toString().getBytes(Charsets.UTF_8), event)))
         .apply(
             KafkaIO.<byte[], byte[]>write()
                 .withBootstrapServers(options.getBootstrapServers())
@@ -734,12 +734,13 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
                 .withValueSerializer(ByteArraySerializer.class));
   }
 
-  static final DoFn<KV<Long, byte[]>, Event> BYTEARRAY_TO_EVENT =
-      new DoFn<KV<Long, byte[]>, Event>() {
+  static final DoFn<KV<byte[], byte[]>, Event> BYTEARRAY_TO_EVENT =
+      new DoFn<KV<byte[], byte[]>, Event>() {
         @ProcessElement
         public void processElement(ProcessContext c) throws IOException {
           byte[] encodedEvent = c.element().getValue();
-          Event event = CoderUtils.decodeFromByteArray(Event.CODER, encodedEvent);
+          String csvRow = CoderUtils.decodeFromByteArray(StringUtf8Coder.of(), encodedEvent);
+          Event event = Event.fromCSVRow(csvRow);
           c.output(event);
         }
       };
@@ -749,11 +750,11 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
     checkArgument((options.getBootstrapServers() != null), "Missing --bootstrapServers");
     NexmarkUtils.console("Reading events from Kafka Topic %s", options.getKafkaTopic());
 
-    KafkaIO.Read<Long, byte[]> read =
-        KafkaIO.<Long, byte[]>read()
+    KafkaIO.Read<byte[], byte[]> read =
+        KafkaIO.<byte[], byte[]>read()
             .withBootstrapServers(options.getBootstrapServers())
             .withTopic(options.getKafkaTopic())
-            .withKeyDeserializer(LongDeserializer.class)
+            .withKeyDeserializer(ByteArrayDeserializer.class)
             .withValueDeserializer(ByteArrayDeserializer.class)
             .withStartReadTime(now)
             .withMaxNumRecords(
@@ -980,7 +981,7 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
                   PCollection<byte[]> events =
                       sourceEventsFromSynthetic(sp)
                           .apply(queryName + ".Monitor", publisherMonitor.getTransform())
-                          .apply("Event to bytes", ParDo.of(EVENT_TO_BYTEARRAY));
+                          .apply("Event to csv", ParDo.of(EVENT_TO_CSV));
                   if (configuration.sourceType == NexmarkUtils.SourceType.KAFKA) {
                     sinkEventsToKafka(events);
                   } else { // pubsub
