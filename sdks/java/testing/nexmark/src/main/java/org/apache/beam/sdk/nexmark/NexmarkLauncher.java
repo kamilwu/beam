@@ -731,7 +731,8 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
                 .withBootstrapServers(options.getBootstrapServers())
                 .withTopic(options.getKafkaTopic())
                 .withKeySerializer(ByteArraySerializer.class)
-                .withValueSerializer(ByteArraySerializer.class));
+                .withValueSerializer(ByteArraySerializer.class)
+                .withProducerConfigUpdates(ImmutableMap.of("request.timeout.ms", "60000")));
   }
 
   static final DoFn<KV<byte[], byte[]>, Event> BYTEARRAY_TO_EVENT =
