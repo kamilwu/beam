@@ -757,9 +757,9 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
             .withTopic(options.getKafkaTopic())
             .withKeyDeserializer(ByteArrayDeserializer.class)
             .withValueDeserializer(ByteArrayDeserializer.class)
-            .withStartReadTime(now)
             .withMaxNumRecords(
-                options.getNumEvents() != null ? options.getNumEvents() : Long.MAX_VALUE);
+                options.getNumEvents() != null ? options.getNumEvents() : Long.MAX_VALUE)
+            .withConsumerConfigUpdates(ImmutableMap.of("auto.offset.reset", "earliest"));
 
     return p.apply(queryName + ".ReadKafkaEvents", read.withoutMetadata())
         .apply(queryName + ".KafkaToEvents", ParDo.of(BYTEARRAY_TO_EVENT));
