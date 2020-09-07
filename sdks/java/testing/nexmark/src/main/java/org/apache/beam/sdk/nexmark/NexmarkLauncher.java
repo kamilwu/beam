@@ -90,6 +90,7 @@ import org.apache.beam.sdk.testutils.metrics.MetricsReader;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -735,11 +736,11 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
                 .withProducerConfigUpdates(ImmutableMap.of("request.timeout.ms", "60000")));
   }
 
-  static final DoFn<KV<byte[], byte[]>, Event> BYTEARRAY_TO_EVENT =
-      new DoFn<KV<byte[], byte[]>, Event>() {
+  static final DoFn<byte[], Event> BYTEARRAY_TO_EVENT =
+      new DoFn<byte[], Event>() {
         @ProcessElement
         public void processElement(ProcessContext c) throws IOException {
-          byte[] encodedEvent = c.element().getValue();
+          byte[] encodedEvent = c.element();
           String csvRow = CoderUtils.decodeFromByteArray(StringUtf8Coder.of(), encodedEvent);
           Event event = Event.fromCSVRow(csvRow);
           c.output(event);
@@ -762,7 +763,8 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
             .withConsumerConfigUpdates(ImmutableMap.of("auto.offset.reset", "earliest"));
 
     return p.apply(queryName + ".ReadKafkaEvents", read.withoutMetadata())
-        .apply(queryName + ".KafkaToEvents", ParDo.of(BYTEARRAY_TO_EVENT));
+        .apply(Values.<byte[]>create())
+        .apply(queryName + ".BytesToEvents", ParDo.of(BYTEARRAY_TO_EVENT));
   }
 
   /** Return Avro source of events from {@code options.getInputFilePrefix}. */
@@ -775,6 +777,20 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
     return p.apply(
             queryName + ".ReadAvroEvents", AvroIO.read(Event.class).from(filename + "*.avro"))
         .apply("OutputWithTimestamp", NexmarkQueryUtil.EVENT_TIMESTAMP_FROM_DATA);
+  }
+
+  private PCollection<Event> sourceEventsFromCSV(Pipeline p) {
+    String inputPattern = options.getInputPath();
+    if (Strings.isNullOrEmpty(inputPattern)) {
+      throw new RuntimeException("Missing --inputPath");
+    }
+    NexmarkUtils.console("Reading events from CSV files at %s", inputPattern);
+    return p.apply(queryName + ".ReadCSV", TextIO.read().from(inputPattern))
+        .apply(
+            queryName + ".CSVRowsToBytes",
+            MapElements.into(TypeDescriptor.of(byte[].class))
+                .via(row -> row.getBytes(Charsets.UTF_8)))
+        .apply(queryName + ".BytesToEvents", ParDo.of(BYTEARRAY_TO_EVENT));
   }
 
   /** Send {@code events} to Pubsub. */
@@ -945,6 +961,9 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
         break;
       case AVRO:
         source = sourceEventsFromAvro(p);
+        break;
+      case CSV:
+        source = sourceEventsFromCSV(p);
         break;
       case KAFKA:
       case PUBSUB:

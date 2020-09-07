@@ -104,7 +104,8 @@ public class NexmarkUtils {
     /**
      * Read events from a Kafka topic. It will be fed the same synthetic events by this pipeline.
      */
-    KAFKA
+    KAFKA,
+    CSV
   }
 
   /** Possible sinks for query results. */
