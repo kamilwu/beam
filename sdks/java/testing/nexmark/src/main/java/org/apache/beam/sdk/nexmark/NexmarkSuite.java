@@ -44,7 +44,13 @@ public enum NexmarkSuite {
   SMALL_LOGGER(smallLogger()),
 
   /** Query 10, at high volume with no autoscaling. */
-  LONG_RUNNING_LOGGER(longRunningLogger());
+  LONG_RUNNING_LOGGER(longRunningLogger()),
+
+  /** Query 1 and 8. */
+  BATCH(batch()),
+
+  /** Query 1, 2, 3, 5, 8 and 11. */
+  STREAMING(streaming());
 
   private static List<NexmarkConfiguration> defaultConf() {
     List<NexmarkConfiguration> configurations = new ArrayList<>();
@@ -135,6 +141,36 @@ public enum NexmarkSuite {
 
     List<NexmarkConfiguration> configurations = new ArrayList<>();
     configurations.add(configuration);
+    return configurations;
+  }
+
+  private static List<NexmarkConfiguration> batch() {
+    List<NexmarkConfiguration> configurations = new ArrayList<>();
+    for (NexmarkQueryName query : NexmarkQueryName.values()) {
+      NexmarkConfiguration configuration = NexmarkConfiguration.DEFAULT.copy();
+      configuration.query = query;
+      if (query == NexmarkQueryName.CURRENCY_CONVERSION
+          || query == NexmarkQueryName.MONITOR_NEW_USERS) {
+        configurations.add(configuration);
+      }
+    }
+    return configurations;
+  }
+
+  private static List<NexmarkConfiguration> streaming() {
+    List<NexmarkConfiguration> configurations = new ArrayList<>();
+    for (NexmarkQueryName query : NexmarkQueryName.values()) {
+      NexmarkConfiguration configuration = NexmarkConfiguration.DEFAULT.copy();
+      configuration.query = query;
+      if (query == NexmarkQueryName.CURRENCY_CONVERSION
+          || query == NexmarkQueryName.SELECTION
+          || query == NexmarkQueryName.LOCAL_ITEM_SUGGESTION
+          || query == NexmarkQueryName.HOT_ITEMS
+          || query == NexmarkQueryName.MONITOR_NEW_USERS
+          || query == NexmarkQueryName.USER_SESSIONS) {
+        configurations.add(configuration);
+      }
+    }
     return configurations;
   }
 
