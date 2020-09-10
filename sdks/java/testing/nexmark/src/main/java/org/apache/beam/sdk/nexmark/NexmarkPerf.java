@@ -119,6 +119,8 @@ public class NexmarkPerf implements TestResult {
   /** The job id this perf was drawn from. Null if not known. */
   @JsonProperty public @Nullable String jobId = null;
 
+  @JsonProperty public @Nullable String dataflowJobId = null;
+
   /** Return a JSON representation of performance. */
   @Override
   public String toString() {
