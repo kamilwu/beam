@@ -154,6 +154,7 @@ public class Main {
               .put("runtimeSec", "float")
               .put("eventsPerSec", "float")
               .put("numResults", "integer")
+              .put("dataflowJobId", "string")
               .build();
 
       if (options.getExportSummaryToBigQuery()) {

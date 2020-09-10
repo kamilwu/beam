@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import org.apache.beam.runners.dataflow.DataflowPipelineJob;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -91,7 +92,6 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.util.CoderUtils;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TimestampedValue;
@@ -256,6 +256,15 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
     double eventsPerSec = sumxy / sumxx;
     NexmarkUtils.console("revising events/sec from %.1f to %.1f", perf.eventsPerSec, eventsPerSec);
     perf.eventsPerSec = eventsPerSec;
+  }
+
+  private String getDataflowJobId(PipelineResult result) {
+    String jobId = "";
+    try {
+      jobId = ((DataflowPipelineJob) result).getJobId();
+    } catch (ClassCastException e) {
+    }
+    return jobId;
   }
 
   /** Return the current performance given {@code eventMonitor} and {@code resultMonitor}. */
@@ -573,6 +582,8 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
       }
     }
 
+    NexmarkUtils.console("Extracting Dataflow Job ID");
+    perf.dataflowJobId = getDataflowJobId(job);
     return perf;
   }
 
