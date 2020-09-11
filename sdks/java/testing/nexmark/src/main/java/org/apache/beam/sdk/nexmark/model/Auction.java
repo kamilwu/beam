@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.CustomCoder;
@@ -194,6 +196,52 @@ public class Auction implements KnownSize, Serializable {
     } else {
       return this;
     }
+  }
+
+  public static Auction fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Auction fromCSVRow(String csvRow, String separator) {
+    final List<String> fields = Arrays.asList(csvRow.split(","));
+
+    String extra = "";
+    if (fields.size() == 11) {
+      extra = fields.get(10);
+    }
+
+    return new Auction(
+        Long.parseLong(fields.get(1)),
+        fields.get(2),
+        fields.get(3),
+        Long.parseLong(fields.get(4)),
+        Long.parseLong(fields.get(5)),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(6))),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(7))),
+        Long.parseLong(fields.get(8)),
+        Long.parseLong(fields.get(9)),
+        extra);
+  }
+
+  public String toCSVRow() {
+    return toCSVRow(",");
+  }
+
+  public String toCSVRow(String separator) {
+    List<String> fields =
+        Arrays.asList(
+            "a",
+            Long.toString(id),
+            itemName,
+            description,
+            Long.toString(initialBid),
+            Long.toString(reserve),
+            Long.toString(dateTime.getMillis()),
+            Long.toString(expires.getMillis()),
+            Long.toString(seller),
+            Long.toString(category),
+            extra);
+    return String.join(separator, fields);
   }
 
   @Override

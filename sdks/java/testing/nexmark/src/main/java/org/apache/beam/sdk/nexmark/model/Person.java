@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.CustomCoder;
@@ -156,6 +158,48 @@ public class Person implements KnownSize, Serializable {
     } else {
       return this;
     }
+  }
+
+  public static Person fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Person fromCSVRow(String csvRow, String separator) {
+    final List<String> fields = Arrays.asList(csvRow.split(","));
+
+    String extra = "";
+    if (fields.size() == 9) {
+      extra = fields.get(8);
+    }
+
+    return new Person(
+        Long.parseLong(fields.get(1)),
+        fields.get(2),
+        fields.get(3),
+        fields.get(4),
+        fields.get(5),
+        fields.get(6),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(7))),
+        extra);
+  }
+
+  public String toCSVRow() {
+    return toCSVRow(",");
+  }
+
+  public String toCSVRow(String separator) {
+    List<String> fields =
+        Arrays.asList(
+            "p",
+            Long.toString(id),
+            name,
+            emailAddress,
+            creditCard,
+            city,
+            state,
+            Long.toString(dateTime.getMillis()),
+            extra);
+    return String.join(separator, fields);
   }
 
   @Override

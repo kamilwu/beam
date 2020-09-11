@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
@@ -152,6 +154,42 @@ public class Bid implements KnownSize, Serializable {
     } else {
       return this;
     }
+  }
+
+  public static Bid fromCSVRow(String csvRow) {
+    return fromCSVRow(csvRow, ",");
+  }
+
+  public static Bid fromCSVRow(String csvRow, String separator) {
+    final List<String> fields = Arrays.asList(csvRow.split(","));
+
+    String extra = "";
+    if (fields.size() == 6) {
+      extra = fields.get(5);
+    }
+
+    return new Bid(
+        Long.parseLong(fields.get(1)),
+        Long.parseLong(fields.get(2)),
+        Long.parseLong(fields.get(3)),
+        Instant.ofEpochMilli(Long.parseLong(fields.get(4))),
+        extra);
+  }
+
+  public String toCSVRow() {
+    return toCSVRow(",");
+  }
+
+  public String toCSVRow(String separator) {
+    List<String> fields =
+        Arrays.asList(
+            "b",
+            Long.toString(auction),
+            Long.toString(bidder),
+            Long.toString(price),
+            Long.toString(dateTime.getMillis()),
+            extra);
+    return String.join(separator, fields);
   }
 
   @Override
