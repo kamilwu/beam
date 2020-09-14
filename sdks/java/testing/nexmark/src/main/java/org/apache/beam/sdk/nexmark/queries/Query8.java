@@ -17,6 +17,8 @@
  */
 package org.apache.beam.sdk.nexmark.queries;
 
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import org.apache.beam.sdk.nexmark.NexmarkConfiguration;
 import org.apache.beam.sdk.nexmark.model.Auction;
 import org.apache.beam.sdk.nexmark.model.Event;
@@ -31,8 +33,9 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Query 8, 'Monitor New Users'. Select people who have entered the system and created auctions in
@@ -48,6 +51,7 @@ import org.joda.time.Duration;
  */
 public class Query8 extends NexmarkQueryTransform<IdNameReserve> {
   private final NexmarkConfiguration configuration;
+  private static final Logger LOG = LoggerFactory.getLogger(Query8.class);
 
   public Query8(NexmarkConfiguration configuration) {
     super("Query8");
@@ -84,16 +88,25 @@ public class Query8 extends NexmarkQueryTransform<IdNameReserve> {
                 new DoFn<KV<Long, CoGbkResult>, IdNameReserve>() {
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    @Nullable
-                    Person person =
-                        c.element().getValue().getOnly(NexmarkQueryUtil.PERSON_TAG, null);
-                    if (person == null) {
+                    Iterator<Person> persons =
+                        c.element().getValue().getAll(NexmarkQueryUtil.PERSON_TAG).iterator();
+                    try {
+                      Person person = persons.next();
+                      for (Auction auction :
+                          c.element().getValue().getAll(NexmarkQueryUtil.AUCTION_TAG)) {
+                        c.output(new IdNameReserve(person.id, person.name, auction.reserve));
+                      }
+                    } catch (NoSuchElementException e) {
                       // Person was not created in last window period.
                       return;
                     }
-                    for (Auction auction :
-                        c.element().getValue().getAll(NexmarkQueryUtil.AUCTION_TAG)) {
-                      c.output(new IdNameReserve(person.id, person.name, auction.reserve));
+                    if (persons.hasNext()) {
+                      LOG.warn(
+                          "More than one person found for the given ID. Discarding excessive data.");
+                      persons.forEachRemaining(
+                          p -> {
+                            LOG.warn(p.toString());
+                          });
                     }
                   }
                 }));
