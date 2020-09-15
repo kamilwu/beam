@@ -107,7 +107,6 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Maps;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
@@ -752,11 +751,11 @@ public class NexmarkLauncher<OptionT extends NexmarkOptions> {
     checkArgument((options.getBootstrapServers() != null), "Missing --bootstrapServers");
     NexmarkUtils.console("Reading events from Kafka Topic %s", options.getKafkaTopic());
 
-    KafkaIO.Read<Long, byte[]> read =
-        KafkaIO.<Long, byte[]>read()
+    KafkaIO.Read<byte[], byte[]> read =
+        KafkaIO.<byte[], byte[]>read()
             .withBootstrapServers(options.getBootstrapServers())
             .withTopic(options.getKafkaTopic())
-            .withKeyDeserializer(LongDeserializer.class)
+            .withKeyDeserializer(ByteArrayDeserializer.class)
             .withValueDeserializer(ByteArrayDeserializer.class)
             .withConsumerConfigUpdates(ImmutableMap.of("auto.offset.reset", "earliest"))
             .withCreateTime(Duration.standardMinutes(1));
